@@ -3,7 +3,7 @@
 
 from utime import sleep
 import gc
-import ujson
+import json
 import urequests_nr as urequests
 
 class ubot:
@@ -23,6 +23,7 @@ class ubot:
 
     def send(self, chat_id, text):
         data = {'chat_id': chat_id, 'text': text}
+        print("sending message to", chat_id, text)
         try:
             headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
             response = urequests.post(self.url + '/sendMessage', json=data, headers=headers)

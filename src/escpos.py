@@ -37,7 +37,7 @@ from exceptions import BarcodeTypeError, BarcodeSizeError, TabPosError
 from exceptions import CashDrawerError, SetVariableError, BarcodeCodeError
 from exceptions import ImageWidthError
 
-# from .magicencode import MagicEncode
+# from magicencode import MagicEncode
 
 # from abc import ABCMeta, abstractmethod  # abstract base class support
 # from escpos.image import EscposImage
@@ -48,7 +48,7 @@ BARCODE_B = 'barcodeB'
 
 
 class SerialEscPos():
-    def __init__(self, devfile, *args, **kwargs):
+    def __init__(self, devfile, profile=None, magic_encode_args=None, *args, **kwargs):
         """
         accepts uart interface
         """
@@ -66,6 +66,9 @@ class SerialEscPos():
         """
         self.device.write(msg)
 
+    def _raw(self, msg):
+        self.device.write(msg)
+
     def read(self):
         """ Reads a data buffer and returns it to the caller. """
         return self.device.read(16)
@@ -79,9 +82,8 @@ class SerialEscPos():
         :param txt: text to be printed
         :raises: :py:exc:`~escpos.exceptions.TextError`
         """
-        txt = str(txt)
-        self.raw(txt)
-        # self.magic.write(txt)
+        self.raw(str(txt))
+        # self.magic.write(str(txt))
 
     def textln(self, txt=''):
         """Print alpha-numeric text with a newline
@@ -115,7 +117,7 @@ class SerialEscPos():
         :param columns: amount of columns
         :return: None
         """
-        # col_count = self.profile.get_columns(font) if columns is None else columns
+        col_count = self.profile.get_columns(font) if columns is None else columns
         # self.text(textwrap.fill(txt, col_count))
         raise NotImplementedError
 
@@ -184,7 +186,7 @@ class SerialEscPos():
         self.raw(TXT_STYLE['smooth'][smooth])
         self.raw(TXT_STYLE['bold'][bold])
         self.raw(TXT_STYLE['underline'][underline])
-        # self.raw(SET_FONT(bytes([self.profile.get_font(font))))
+        self.raw(SET_FONT(bytes([self.profile.get_font(font)])))
         self.raw(TXT_STYLE['align'][align])
 
         if density != 9:

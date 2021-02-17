@@ -1,15 +1,8 @@
-config = {
-    'ssid':'',
-    'password':'',
-    'admin_chat_id': ],
-    'token': '',
-    'auto_cut': False
-}
 
 import utelegram
 import network
 import escpos
-import json
+import ujson
 import micropython
 from utime import sleep, localtime
 from machine import UART
@@ -41,11 +34,15 @@ If you have any feature ideas or bug reports pls send a text to @LinhTran, or be
 
 
 def init():
-    global p, uart, bonbotdata
+    global p, uart, bonbotdata, config
     uart = UART(2, 38400)
     uart.init(38400, bits=8, parity=None, stop=1)
-    p = escpos.SerialEscPos(uart)
+    p = escpos.SerialEscPos(uart, profile="TM-T88II")
     print("UART initialized")
+
+    with open("config.json", "r") as f:
+        config = ujson.load(f)
+    print("Config loaded")
 
     sta_if = network.WLAN(network.STA_IF)
     if not sta_if.isconnected():
@@ -58,9 +55,10 @@ def init():
             pass
     print("\nNetwork Connection Established:")
     print(sta_if.ifconfig())
+
     try:
         with open("bonbotdata.json", "r") as f:
-            bonbotdata = json.load(f)
+            bonbotdata = ujson.load(f)
             print("Database was loaded:")
             for entry in bonbotdata:
                 print(entry,":", bonbotdata[entry])
@@ -75,7 +73,7 @@ def user_exists(id):
     return False        
         
 def start(message):
-    print("received start:", message)
+    # print("received start:", message)
     if user_exists(message['message']['chat']['id']):
         bot.send(message['message']['chat']['id'], "You already have print access. Type /help if you want to know how this thing works")
     else:
@@ -114,7 +112,7 @@ def approve_user(message):
         new_user = {user_id: {"messages": 0, "characters": 0}}
         bonbotdata.update(new_user)
         with open("bonbotdata.json", "w") as f:
-            json.dump(bonbotdata, f)
+            ujson.dump(bonbotdata, f)
         bot.send(user_id, welcome_text)
         bot.send(message['message']['chat']['id'], "Access granted for user {}".format(user_id))
     else:
@@ -126,7 +124,7 @@ def default(message):
     if user_exists(message['message']['chat']['id']):
         bot.send(message['message']['chat']['id'], 'Bonnetjesprinter doet brrrr')
         tt = localtime(message['message']['date'])
-        timestring = "{}-{}-{} {}:{}:{}".format(tt[2], tt[1], tt[0]-30, tt[3], tt[4], tt[5])
+        timestring = "{}-{}-{} {}:{}:{}".format(tt[2], tt[1], tt[0]-30, tt[3]+1, tt[4], tt[5])
         p.text("Om {} zei {}:\n{}".format(timestring, message['message']['from']['first_name'], message['message']['text']))
         output = str(message['message']['text'])
         p.text("".format(output))
@@ -136,13 +134,16 @@ def default(message):
         bonbotdata[str(message['message']['chat']['id'])]['messages'] += 1
         bonbotdata[str(message['message']['chat']['id'])]['characters'] += len(message['message']['text'])
         with open("bonbotdata.json", "w") as f:
-            json.dump(bonbotdata, f)
+            ujson.dump(bonbotdata, f)
 
         if config['auto_cut'] is True:
             p.cut()
     # id was not found, do nothing
 
 def anonymous(message):
+    user_name = '@' + message['message']['from']['username'] if 'username' in message['message']['from'] else message['message']['from']['first_name']
+    bot.send(config['admin_chat_id'], "User {} sent an anonymous message!".format(user_name))
+
     message['message']['from']['first_name'] = "anonymous"
     message['message']['text'] = message['message']['text'][11:]
     default(message)
@@ -169,10 +170,18 @@ def del_user(message):
         if user_id in bonbotdata:
             del bonbotdata[user_id]
             with open("bonbotdata.json", "w") as f:
-                json.dump(bonbotdata, f)
+                ujson.dump(bonbotdata, f)
             bot.send(message['message']['chat']['id'], "user {} succesfully deleted".format(user_id))
         else:
             bot.send(message['message']['chat']['id'], "user {} not found in table".format(user_id))
+
+def sendto(message):
+    if (message['message']['chat']['id'] == config['admin_chat_id']):
+        user_id = message['message']['text'].split(" ")[1]
+        text = " ".join(message['message']['text'].split(" ")[2:])
+        bot.send(user_id, text)
+        bot.send(message['message']['chat']['id'], "Sent user {} the following message:\n{}".format(user_id, text))
+
 
 if __name__ == "__main__":
     init()
@@ -190,6 +199,7 @@ if __name__ == "__main__":
     bot.register('/cut', cut)
     bot.register('/shell', shell)
     bot.register('/quit', die)
+    bot.register('/sendto', sendto)
     bot.set_default_handler(default)
 
     bot.send(config['admin_chat_id'], "Bot came online :D")
