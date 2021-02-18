@@ -64,7 +64,10 @@ class SerialEscPos():
         :param msg: arbitrary code to be printed
         :type msg: bytes
         """
-        self.device.write(msg)
+        try:
+            self.device.write(msg)
+        except:
+            return False
 
     def _raw(self, msg):
         self.device.write(msg)
@@ -107,19 +110,19 @@ class SerialEscPos():
         if count > 0:
             self.text('\n' * count)
 
-    def block_text(self, txt, font=None, columns=None):
-        """ Text is printed wrapped to specified columns
+    # def block_text(self, txt, font=None, columns=None):
+    #     """ Text is printed wrapped to specified columns
 
-        Text has to be encoded in unicode.
+    #     Text has to be encoded in unicode.
 
-        :param txt: text to be printed
-        :param font: font to be used, can be :code:`a` or :code:`b`
-        :param columns: amount of columns
-        :return: None
-        """
-        col_count = self.profile.get_columns(font) if columns is None else columns
-        # self.text(textwrap.fill(txt, col_count))
-        raise NotImplementedError
+    #     :param txt: text to be printed
+    #     :param font: font to be used, can be :code:`a` or :code:`b`
+    #     :param columns: amount of columns
+    #     :return: None
+    #     """
+    #     col_count = self.profile.get_columns(font) if columns is None else columns
+    #     # self.text(textwrap.fill(txt, col_count))
+    #     raise NotImplementedError
 
     def set(self, align='left', font='a', bold=False, underline=0, width=1,
             height=1, density=9, invert=False, smooth=False, flip=False,
@@ -186,7 +189,8 @@ class SerialEscPos():
         self.raw(TXT_STYLE['smooth'][smooth])
         self.raw(TXT_STYLE['bold'][bold])
         self.raw(TXT_STYLE['underline'][underline])
-        self.raw(SET_FONT(bytes([self.profile.get_font(font)])))
+        # self.raw(SET_FONT(bytes([self.profile.get_font(font)])))
+        self.raw(SET_FONT(bytes([font])))
         self.raw(TXT_STYLE['align'][align])
 
         if density != 9:

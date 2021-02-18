@@ -439,7 +439,6 @@
                 }
             },
             "name": "TM-T88II",
-            "notes": "Epson TM-T88II profile. The specs where taken from a TM-T88IIP machine (I assume the P just stands for parallel port). The standart 80mm paper width version was used here. There is also a custom 58mm factory option. If you are using the custom version change media width to 50.8mm and 360px accordingly. This printer is discontinued by the Vendor and has similar feature support to the TM-T88III. The code page mapping is documented in the \"TM-T88II/T88III Technical Reference Guide\".\n",
             "vendor": "Epson"
         }
     }

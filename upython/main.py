@@ -92,10 +92,13 @@ def cut(message):
 
 def shell(message):
     if (message['message']['chat']['id'] == config['admin_chat_id']):
-        cmd = message['message']['text'][7:]
-        output = exec(cmd)
-        print(output)
-        bot.send(message['message']['chat']['id'], output)
+        try:
+            cmd = message['message']['text'][7:]
+            output = exec(cmd)
+            print(output)
+            bot.send(message['message']['chat']['id'], output)
+        except:
+            bot.send(message['message']['chat']['id'], "caused exception")
 
 def die(message):
     if (message['message']['chat']['id'] == config['admin_chat_id']):
@@ -181,7 +184,6 @@ def sendto(message):
         text = " ".join(message['message']['text'].split(" ")[2:])
         bot.send(user_id, text)
         bot.send(message['message']['chat']['id'], "Sent user {} the following message:\n{}".format(user_id, text))
-
 
 if __name__ == "__main__":
     init()
