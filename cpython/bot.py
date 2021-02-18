@@ -11,7 +11,6 @@ from PIL import Image
 # https://github.com/python-escpos/python-escpos
 from escpos.printer import Serial
 import ujson
-import pprint
 
 start_text = (
     """You don't have print access yet, so I've requested it for you. You'll get a confirmation message once access has been granted"""
@@ -110,6 +109,7 @@ def printbon(update, context):
         message.reply_text("Bonnetjesprinter doet brrrr")
         timestring = message.date.astimezone(tzone).strftime(fmt)
         p.text(f"Om {timestring} zei {message.chat.first_name}:\n{message.text}")
+        p.text("\n------------------------------------------\n")
         p.cut()
 
 def shell(update, context):
@@ -202,11 +202,17 @@ def printimage(update, context):
     p.image(photo, impl='bitImageRaster', center=True)
     p.cut()
 
+def russian(context):
+    text = "Доброе утро. Хорошего дня!"
+    p.text(f"Daily Russian:\n{text}")
+    p.text("\n------------------------------------------\n")
+    p.cut()
+
 def main():
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
     updater = Updater(config['token'])
-
+    
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
@@ -229,6 +235,9 @@ def main():
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, printbon))
     dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, printimage))
 
+    # scheduled tasks that run in UTC
+    job = updater.job_queue
+    job.run_daily(russian,datetime.time(6, 30, 00, 000000),days=(0, 1, 2, 3, 4, 5, 6))
 
     # Start the Bot
     updater.start_polling()
