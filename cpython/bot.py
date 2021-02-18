@@ -1,9 +1,10 @@
 import logging
-from telegram import Update
+from telegram import Update, File, PhotoSize
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 from time import sleep
 import time
 from pytz import timezone
+from PIL import Image
 
 # Cpython bot implementation 
 # make sure to grab the latest version from:
@@ -40,14 +41,9 @@ Any message that is not a command (starts with /) will be printed alongside your
 If you have any feature ideas or bug reports pls send a text to @LinhTran, or better yet, send them to the printer!
 """)
 
-p = Serial(devfile='/dev/ttyUSB2',
-           baudrate=38400,
-           bytesize=8,
-           parity='N',
-           stopbits=1,
-           timeout=1.00,
-           dsrdtr=True,
-           Profile="TM-T88II")
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
 
 with open("config.json", "r") as f:
     config = ujson.load(f)
@@ -56,9 +52,14 @@ logger.info("Config loaded")
 fmt = '%d-%m-%Y %H:%M:%S'
 tzone = timezone('Europe/Amsterdam')
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-logger = logging.getLogger(__name__)
+p = Serial(devfile='/dev/ttyUSB2',
+           baudrate=38400,
+           bytesize=8,
+           parity='N',
+           stopbits=1,
+           timeout=1.00,
+           dsrdtr=True,
+           profile="TM-T88II")
 
 try:
     with open("bonbotdata.json", "r") as f:
@@ -187,9 +188,19 @@ def spam(update, context):
 
 
 def printimage(update, context):
-    logger.info(update)
-    message = 
-    p.image()
+    message = update.message
+    newFile = context.bot.getFile(file_id=message.photo[-1].file_id)
+    photo = newFile.download()
+
+    im = Image.open(photo)
+    width = message.photo[-1].width
+    height = message.photo[-1].height
+    maxwidth = p.profile.media['width']['pixels']
+    resizeratio = maxwidth/width
+
+    photo = im.resize((maxwidth, int(height * resizeratio)))
+    p.image(photo, impl='bitImageRaster', center=True)
+    p.cut()
 
 def main():
     """Start the bot."""
@@ -216,7 +227,7 @@ def main():
 
     # on noncommand i.e message - echo the message on Telegram
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, printbon))
-    dispatcher.add_handler(MessageHandler(Filters.image & ~Filters.command, printimage))
+    dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, printimage))
 
 
     # Start the Bot
