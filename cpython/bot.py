@@ -57,7 +57,7 @@ logger.info("Config loaded")
 fmt = '%d-%m-%Y %H:%M:%S'
 tzone = timezone('Europe/Amsterdam')
 
-p = Serial(devfile='/dev/ttyUSB1',
+p = Serial(devfile='/dev/ttyUSB0',
            baudrate=38400,
            bytesize=8,
            parity='N',
@@ -209,7 +209,7 @@ def printimage(photo):
 
     photo = im.resize((maxwidth, int(height * resizeratio)))
     # im.save(photo, "PNG")
-    p.image(photo, impl='bitImageRaster')
+    p.image(photo, impl='bitImageRaster', fragment_height=24)
 
 def cut():
     if config['auto_cut'] is True:
