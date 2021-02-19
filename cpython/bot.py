@@ -1,16 +1,21 @@
-import logging
-from telegram import Update, File, PhotoSize
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
-from time import sleep
-import time
-from pytz import timezone
-from PIL import Image
 
-# Cpython bot implementation 
+# Cpython bot implementation
 # make sure to grab the latest version from:
 # https://github.com/python-escpos/python-escpos
 from escpos.printer import Serial
-import ujson
+import logging
+from telegram import Update, File, PhotoSize
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+
+import datetime
+import time
+from time import sleep
+from pytz import timezone  # get message timezones correct
+from PIL import Image  # resizing incoming images
+from sympy import preview  # latex compiling
+import os  # downloaded file handling
+import ujson  # for database stuff
+
 
 start_text = (
     """You don't have print access yet, so I've requested it for you. You'll get a confirmation message once access has been granted"""
@@ -24,7 +29,7 @@ Type /help for a more elaborate guide
 help_text = (
 """Info:
 Only ASCII characters are supported right now, you can type whatever you want but if it's not ASCII (cyrillic, arabic, etc.) it probably won't be printed.
-Pics, emojis, media, and stickers are not supported (yet), they will be ignored. 
+Pics, emojis, media, and stickers are not supported (yet), they will be ignored.
 This all runs on an ESP with limited resources, so sometimes the bot can take several seconds before it responds. The bot might also crash from time to time, and my wifi is buggy af,
 I'm also still figuring out how memory allocation works pls don't hate xd
 Dont worry, all messages are retained on a server and will be printed in the end!
@@ -36,6 +41,7 @@ Any message that is not a command (starts with /) will be printed alongside your
 /anonymous [message] prints an anonymous message (without first name)
 /info shows debug info about your chat
 /stats shows printer statistics
+/latex prints a latex equation (ex: \\frac{\partial\mathcal{D}}{\partial t} \\nabla\\times\mathcal{H})
 
 If you have any feature ideas or bug reports pls send a text to @LinhTran, or better yet, send them to the printer!
 """)
@@ -51,13 +57,13 @@ logger.info("Config loaded")
 fmt = '%d-%m-%Y %H:%M:%S'
 tzone = timezone('Europe/Amsterdam')
 
-p = Serial(devfile='/dev/ttyUSB2',
+p = Serial(devfile='/dev/ttyUSB1',
            baudrate=38400,
            bytesize=8,
            parity='N',
            stopbits=1,
            timeout=1.00,
-           dsrdtr=True,
+           dsrdtr=False,
            profile="TM-T88II")
 
 try:
@@ -74,7 +80,7 @@ def user_exists(id):
     for entry in bonbotdata:
         if int(entry) == id:
             return True
-    return False  
+    return False
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -96,7 +102,7 @@ def helper(update, context):
     message.reply_text(help_text)
 
 def cut(update, context):
-    p.cut()
+    cut()
 
 def info(update, context):
     update.message.reply_text(str(update))
@@ -107,10 +113,16 @@ def printbon(update, context):
 
     if user_exists(message.chat.id):
         message.reply_text("Bonnetjesprinter doet brrrr")
+        # update stats
+        bonbotdata[str(message.chat.id)]['messages'] += 1
+        bonbotdata[str(message.chat.id)]['characters'] += len(message.text)
+        with open("bonbotdata.json", "w") as f:
+            ujson.dump(bonbotdata, f)
+
         timestring = message.date.astimezone(tzone).strftime(fmt)
         p.text(f"Om {timestring} zei {message.chat.first_name}:\n{message.text}")
         p.text("\n------------------------------------------\n")
-        p.cut()
+        cut()
 
 def shell(update, context):
     message = update.message
@@ -186,33 +198,75 @@ def stats(update, context):
 def spam(update, context):
     pass
 
-
-def printimage(update, context):
-    message = update.message
-    newFile = context.bot.getFile(file_id=message.photo[-1].file_id)
-    photo = newFile.download()
-
+def printimage(photo):
     im = Image.open(photo)
-    width = message.photo[-1].width
-    height = message.photo[-1].height
+    width, height = im.size
+
     maxwidth = p.profile.media['width']['pixels']
     resizeratio = maxwidth/width
+    print(width, height, resizeratio, maxwidth)
+    print(int(height * resizeratio))
 
     photo = im.resize((maxwidth, int(height * resizeratio)))
-    p.image(photo, impl='bitImageRaster', center=True)
-    p.cut()
+    # im.save(photo, "PNG")
+    p.image(photo, impl='bitImageRaster')
+
+def cut():
+    if config['auto_cut'] is True:
+        p.cut(mode='FULL', feed=True)
+
+def imagemes(update, context):
+    message = update.message
+
+    if user_exists(message.chat.id):
+        newFile = context.bot.getFile(file_id=message.photo[-1].file_id)
+        photo = newFile.download("temp.png")
+        # update stats
+        bonbotdata[str(message.chat.id)]['messages'] += 1
+        with open("bonbotdata.json", "w") as f:
+            ujson.dump(bonbotdata, f)
+
+        message.reply_text("Bonnetjesprinter doet brrrr")
+        timestring = message.date.astimezone(tzone).strftime(fmt)
+        p.text(f"Om {timestring} zei {message.chat.first_name}:\n")
+        printimage(photo)
+        os.remove("temp.png")
+        p.text("\n------------------------------------------\n")
+        cut()
 
 def russian(context):
     text = "Доброе утро. Хорошего дня!"
     p.text(f"Daily Russian:\n{text}")
     p.text("\n------------------------------------------\n")
-    p.cut()
+    cut()
+
+def latex(update, context):
+    message = update.message
+    if user_exists(message.chat.id):
+        try:
+            expr = f"r'$${message.text[7:]}$$'"
+            preview(expr, viewer='file', filename='temp.png')
+        except:
+            message.reply_text("Only simple and correct equations are supported. Pls try again")
+            return
+        # update stats
+        bonbotdata[str(message.chat.id)]['messages'] += 1
+        with open("bonbotdata.json", "w") as f:
+            ujson.dump(bonbotdata, f)
+        timestring = message.date.astimezone(tzone).strftime(fmt)
+        message.reply_text("Bonnetjesprinter doet brrrr")
+        p.text(f"Om {timestring} zei {message.chat.first_name}:\n")
+        printimage("temp.png")
+        os.remove("temp.png")
+        p.text("\n------------------------------------------\n")
+        cut()
+
 
 def main():
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
     updater = Updater(config['token'])
-    
+
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
@@ -224,6 +278,8 @@ def main():
     dispatcher.add_handler(CommandHandler("stats", stats))
     dispatcher.add_handler(CommandHandler("cut", cut))
     dispatcher.add_handler(CommandHandler("anonymous", anonymous))
+    dispatcher.add_handler(CommandHandler("latex", latex))
+
 
     dispatcher.add_handler(CommandHandler("adduser", approve_user, filters=admin_filter))
     dispatcher.add_handler(CommandHandler("deluser", del_user, filters=admin_filter))
@@ -233,7 +289,7 @@ def main():
 
     # on noncommand i.e message - echo the message on Telegram
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, printbon))
-    dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, printimage))
+    dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, imagemes))
 
     # scheduled tasks that run in UTC
     job = updater.job_queue
