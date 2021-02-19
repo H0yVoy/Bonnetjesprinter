@@ -28,14 +28,15 @@ Type /help for a more elaborate guide
 
 help_text = (
 """Info:
-Only ASCII characters are supported right now, you can type whatever you want but if it's not ASCII (cyrillic, arabic, etc.) it probably won't be printed.
-Pics, emojis, media, and stickers are not supported (yet), they will be ignored.
-This all runs on an ESP with limited resources, so sometimes the bot can take several seconds before it responds. The bot might also crash from time to time, and my wifi is buggy af,
-I'm also still figuring out how memory allocation works pls don't hate xd
-Dont worry, all messages are retained on a server and will be printed in the end!
+With this bot you can send physical texts to Ties!
+Most European character sets are supported now: Latin, Cyrillic, Hungarian, Greek etc. as well as Thai, Arabic and Katakana.
+You can send images as well, they will be printed in black and white but other than that will look mighty fine and very high-res!
+Emojis, media, stickers, as well as exotic characters (i.e. Indic) are not supported (yet), they will be ignored or a ? will be printed instead.
+This all used to run on an ESP, but was moved to a raspberry pi since image and extended character set support were added. If anyone knows how to dynamically interpret and switch character sets, as well as doing image manipulation with the limited resources of an ESP pls let me know.
+If the bot is offline (maybe I'm asleep) dont worry, all messages are retained on a server and will be printed in the end!
 
 Howto:
-Any message that is not a command (starts with /) will be printed alongside your first name and a timestamp
+Any text message or image that is not a command (starts with /) will be printed alongside your first name and a timestamp
 /help shows this info
 /start shows welcome text and requests access
 /anonymous [message] prints an anonymous message (without first name)
@@ -196,7 +197,9 @@ def stats(update, context):
 
 
 def spam(update, context):
-    pass
+    for entry in bonbotdata:
+        context.bot.send_message(chat_id=entry, text=update.message.text[6:])
+    update.message.reply_text("Spammed everyone in the database")
 
 def printimage(photo):
     im = Image.open(photo)
@@ -206,12 +209,10 @@ def printimage(photo):
     resizeratio = maxwidth/width
     print(width, height, resizeratio, maxwidth)
     print(int(height * resizeratio))
-
     photo = im.resize((maxwidth, int(height * resizeratio)))
-    # im.save(photo, "PNG")
-    p.image(photo, impl='bitImageRaster', fragment_height=24)
+    p.image(photo, impl='bitImageRaster')
 
-def cut():
+def cut(update=0, context=0):
     if config['auto_cut'] is True:
         p.cut(mode='FULL', feed=True)
 
