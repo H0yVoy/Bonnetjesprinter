@@ -35,7 +35,7 @@ if __name__ == '__main__':
     dispatcher.add_handler(CommandHandler("latex",      handler.latex))
 
     dispatcher.add_handler(CommandHandler("adduser",    handler.approve_user,   filters=admin_filter))
-    dispatcher.add_handler(CommandHandler("deluser",    handler.deluser,       filters=admin_filter))
+    dispatcher.add_handler(CommandHandler("deluser",    handler.deluser,        filters=admin_filter))
     dispatcher.add_handler(CommandHandler("shell",      handler.shell,          filters=admin_filter))
     dispatcher.add_handler(CommandHandler("sendto",     handler.sendto,         filters=admin_filter))
     dispatcher.add_handler(CommandHandler("spam",       handler.spam,           filters=admin_filter))
