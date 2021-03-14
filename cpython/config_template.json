@@ -1,0 +1,8 @@
+{
+  "admin_id": ,
+  "token": "",
+  "auto_cut": true,
+
+  "dtfmt": "%d-%m-%Y %H:%M:%S",
+  "tzone": "Europe/Amsterdam"
+}
