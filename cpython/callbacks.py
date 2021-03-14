@@ -28,6 +28,7 @@ class handler:
                         timeout=1.00,
                         dsrdtr=False,
                         profile="TM-T88II")
+        self.parser = printerpreter(self.p)
 
     def write_db(self):
         # TODO: substitue with sqlite or smth
@@ -42,7 +43,7 @@ class handler:
 
     def cut(self):
         if self.config['auto_cut'] is True:
-            self.p.cut(mode='FULL', feed=True)
+            self.p.cut(mode='FULL', feed=True, lines=4)
 
     ## command handlers
     def start(self, update, context):
@@ -53,9 +54,7 @@ class handler:
         else:
             message.reply_text(start_text)
             user_name = '@' + message.chat.username if message.chat.username is not None else message.chat.first_name
-            context.bot.send_message(chat_id=self.config['admin_chat_id'],
-                                     text=f"User id {message.chat.id} with name {user_name} has requested access to the bonnetjesprinter, moog det? typ /adduser [id] om t te doon")
-
+            context.bot.send_message(chat_id=self.config['admin_chat_id'], text=f"User id {message.chat.id} with name {user_name} has requested access to the bonnetjesprinter, moog det? typ /adduser [id] om t te doon")
 
     def helper(self, update, context):
         """Send a message when the command /help is issued."""
@@ -64,55 +63,64 @@ class handler:
     def info(self, update, context):
         update.message.reply_text(str(update))
 
-    def txtbon(self, update, context):
+    def message(self, update, context):
         """print the user message."""
         message = update.message
+        print(message)
         if self.check_user(message.chat.id):
             message.reply_text(printing_text)
-            # update stats
             self.db[str(message.chat.id)]['messages'] += 1
-            self.db[str(message.chat.id)]['characters'] += len(message.text)
-            self.write_db()
 
-            timestring = message.date.astimezone(self.tzone).strftime(self.fmt)
-            self.p.text(f"Om {timestring} zei {message.chat.first_name}:\n{message.text}")
-            self.p.text("\n------------------------------------------\n")
-            self.cut()
+            body = message.text
+            user = message.chat.first_name
+            image = None
+            try:
+                newFile = context.bot.getFile(file_id=message.photo[-1].file_id)
+                image = newFile.download("temp.png")
+                body = message.caption
+            except (IndexError, AttributeError):
+                pass
 
-    def imgbon(self, update, context):
-        message = update.message
-        if self.check_user(message.chat.id):
-            newFile = context.bot.getFile(file_id=message.photo[-1].file_id)
-            photo = newFile.download("temp.png")
-            # update stats
-            self.db[str(message.chat.id)]['messages'] += 1
-            self.write_db()
+            if body:
+                self.db[str(message.chat.id)]['characters'] += len(body)
+                self.write_db()
+            time = message.date.astimezone(self.tzone).strftime(self.fmt)
+            title = f"Om {time} zei {user}:"
+            if self.config['admin_chat_id'] == message.chat.id:
+                title = None
+            print(title, body, image)
+            self.printbon(title, body, image)
+            if image:
+                os.remove("temp.png")
 
-            message.reply_text(printing_text)
-            timestring = message.date.astimezone(self.tzone).strftime(self.fmt)
-            self.p.text(f"Om {timestring} zei {message.chat.first_name}:\n")
-            self.printimage(photo)
-            os.remove("temp.png")
-            self.p.text("\n------------------------------------------\n")
-            self.cut()
+    def printbon(self, title=None, body=None, image=None, image_resize=True):
+        if title:
+            self.p.text(title + "\n")
+        if image:
+            self.printimage(image, image_resize)
+        if body:
+            self.p.text(body)
+        self.p.text("\n------------------------------------------\n")
+        self.cut()
+        sleep(2) # timeout else the printing element overheats
 
-    def printimage(self, photo):
+    def printimage(self, photo, resize=True):
         im = Image.open(photo)
         width, height = im.size
 
         maxwidth = self.p.profile.media['width']['pixels']
-        resizeratio = maxwidth/width
-        photo = im.resize((maxwidth, int(height * resizeratio)))
+        if width > maxwidth or resize is True:
+            resizeratio = maxwidth/width
+            photo = im.resize((maxwidth, int(height * resizeratio)))
         self.p.image(photo, impl='bitImageRaster')
 
     def anonymous(self, update, context):
         message = update.message
-        user_name = '@' + message.chat.username if message.chat.username is not None else message.chat.first_name
-        context.bot.send_message(chat_id=self.config['admin_chat_id'], text=f"User {user_name} sent an anonymous message!")
-
-        update.message.chat.first_name = "anonymous"
-        update.message.text = message.text[11:]
-        self.txtbon(update, context)
+        user = '@' + message.chat.username if message.chat.username is not None else message.chat.first_name
+        context.bot.send_message(chat_id=self.config['admin_chat_id'], text=f"User {user} sent an anonymous message!")
+        time = message.date.astimezone(self.tzone).strftime(self.fmt)
+        title = f"Om {time} zei anonymous:"
+        self.printbon(title, update.message.text[11:])
 
     def stats(self, update, context):
         tot_mes = 0
@@ -133,7 +141,7 @@ class handler:
         message = update.message
         if self.check_user(message.chat.id):
             try:
-                expr = f"r'$${message.text[7:]}$$'"
+                expr = f"\\Large ${message.text[7:]}$"
                 preview(expr, viewer='file', filename='temp.png')
             except:
                 message.reply_text("Only simple and correct equations are supported. Pls try again")
@@ -141,12 +149,10 @@ class handler:
             # update stats
             self.db[str(message.chat.id)]['messages'] += 1
             self.write_db()
-            timestring = message.date.astimezone(self.tzone).strftime(self.fmt)
+            time = message.date.astimezone(self.tzone).strftime(self.fmt)
             message.reply_text(printing_text)
-            self.p.text(f"Om {timestring} zei {message.chat.first_name}:\n")
-            self.printimage("temp.png")
-            self.p.text("\n------------------------------------------\n")
-            self.cut()
+            title = f"Om {time} zei {message.chat.first_name}:"
+            self.printbon(title, None, "temp.png", False)
             os.remove("temp.png")
 
     ## admin command handlers
@@ -181,12 +187,9 @@ class handler:
 
     def shell(self, update, context):
         message = update.message
-        try:
-            cmd = message.text[7:]
-            output = exec(cmd)
-            message.reply_text(output)
-        except:
-            message.reply_text("caused exception")
+        cmd = message.text[7:]
+        output = exec(cmd)
+        message.reply_text(output)
 
     def spam(self, update, context):
         for entry in self.db:
@@ -195,7 +198,141 @@ class handler:
 
     def russian(self, context):
         text = "Доброе утро. Хорошего дня!"
-        p.text(f"Daily Russian:\n{text}")
-        p.text("\n------------------------------------------\n")
-        cut()
+        title = f"Daily Russian:"
+        body = text
+        self.printbon(title, text)
 
+    def exception(self, update, context):
+        context.bot.send_message(chat_id=self.config['admin_chat_id'], text=f"An Exception Occured: {context.error}!")
+
+    def parser(self, text):
+        parser = printerpreter(self.p)
+        parser.feed(text)
+
+
+from html.parser import HTMLParser
+
+class printerpreter(HTMLParser):
+    """ interprets text sent to printer, supports a ton of tags and converts links to qr codes"""
+    active_tags = {}
+
+    def __init__(self, printer):
+        self.p = printer
+
+    def handle_starttag(self, tag, attrs):
+        try:
+            self.active_tags.update({tag: attrs[0][0]})
+        except IndexError:
+            self.active_tags.update({tag: True})
+
+    def handle_endtag(self, tag):
+        del self.active_tags[tag]
+
+    def handle_data(self, data):
+        self.setPrinterSettings(self.active_tags)
+        self.p.text(data)
+
+    def setPrinterSettings(self, tags):
+        set = ""
+        for entry in tags:
+            # set = set + f"{entry}={tags[entry]}"
+            print(entry)
+            tag = tags[entry]
+            if entry == "a":
+                set = set + f"align={tag}, "
+            if entry == "f":
+                set = set + f"font='{tag}', "
+            if entry == "b":
+                set = set + f"bold=True, "
+            if entry == "ul":
+                set = set + f"underline={tag}, "
+            if entry == "dh":
+                set = set + f"double_heigt=True, "
+            if entry == "dw":
+                set = set + f"double_width=True, "
+            if entry == "cs":
+                set = set + f"custom_size=True, "
+            if entry == "w":
+                set = set + f"custom_width={tag}, "
+            if entry == "h":
+                set = set + f"custom_height={tag}, "
+            if entry == "d":
+                set = set + f"density={tag}, "
+            if entry == "i":
+                set = set + f"invert=True, "
+            if entry == "s":
+                set = set + f"smooth=True, "
+            if entry == "fl":
+                set = set + f"flip=True, "
+        print(set)
+        exec(f"self.p.set({set})")
+
+
+        
+
+        # exec(f"self.set.p({entry}={active_tags[entry]}")
+        # settings is a dict with attributes, convert them to p.set() commands
+
+if __name__ == "__main__":
+    import ujson  # for database stuff
+    configfile = "config.json"
+    dbfile = "bonbotdata.json"
+    config = ujson.load(open(configfile, "r"))
+    db = ujson.load(open(dbfile, "r"))
+
+    handler = handler(config, db)
+    handler.parser.feed(
+        """heyheyhey
+        <align left><font a><bold>hey
+        <align right>hoeist?
+        <align left>goed, mj?
+        <font b><bold>HALLO</bold></font>
+        <flip>ondersteboven</flip>
+        <ul 2>
+        <bold>oida</bold>
+        """
+    )
+
+
+    """ Set text properties by sending them to the printer
+    All tags which are not terminated will be terminated at the end of your text
+
+    :param align: horizontal position for text, possible values are:
+
+        * 'center'
+        * 'left'
+        * 'right'
+
+        *default*: 'left'
+
+    :param font: font given as an index, a name, or one of the
+        special values 'a' or 'b', referring to fonts 0 and 1.
+    :param bold: text in bold, *default*: False
+    :param underline: underline mode for text, decimal range 0-2,  *default*: 0
+    :param double_height: doubles the height of the text
+    :param double_width: doubles the width of the text
+    :param custom_size: uses custom size specified by width and height
+        parameters. Cannot be used with double_width or double_height.
+    :param width: text width multiplier when custom_size is used, decimal range 1-8,  *default*: 1
+    :param height: text height multiplier when custom_size is used, decimal range 1-8, *default*: 1
+    :param density: print density, value from 0-8, if something else is supplied the density remains unchanged
+    :param invert: True enables white on black printing, *default*: False
+    :param smooth: True enables text smoothing. Effective on 4x4 size text and larger, *default*: False
+    :param flip: True enables upside-down printing, *default*: False
+
+    :type font: str
+    :type invert: bool
+    :type bold: bool
+    :type underline: bool
+    :type smooth: bool
+    :type flip: bool
+    :type custom_size: bool
+    :type double_width: bool
+    :type double_height: bool
+    :type align: str
+    :type width: int
+    :type height: int
+    :type density: int
+
+    add barcode, qrcode as well, convert weblinks to qrcodes by default
+    """

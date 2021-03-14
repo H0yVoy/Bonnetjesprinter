@@ -13,7 +13,7 @@ With this bot you can send physical texts to Ties!
 Most European character sets are supported now: Latin, Cyrillic, Hungarian, Greek etc. as well as Thai, Arabic and Katakana.
 You can send images as well, they will be printed in black and white but other than that will look mighty fine and very high-res!
 Emojis, media, stickers, as well as exotic characters (i.e. Indic) are not supported (yet), they will be ignored or a ? will be printed instead.
-This all used to run on an ESP, but was moved to a raspberry pi since image and extended character set support were added. If anyone knows how to dynamically interpret and switch character sets, as well as doing image manipulation with the limited resources of an ESP pls let me know.
+This all used to run on an ESP, but was moved to a raspberry pi since image and extended character set support were added. If anyone knows how to dynamically interpret and switch character sets on a per character basis, as well as doing image manipulation with the limited resources of an ESP pls let me know ;p
 If the bot is offline (maybe I'm asleep) dont worry, all messages are retained on a server and will be printed in the end!
 
 Howto:

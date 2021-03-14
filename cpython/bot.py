@@ -9,6 +9,7 @@ from telegram import Update, File, PhotoSize
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import ujson  # for database stuff
 import datetime
+from tinydb import TinyDB
 
 import callbacks as cbs
 
@@ -16,7 +17,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 logger = logging.getLogger(__name__)
 
 config = ujson.load(open(configfile, "r"))
-db = ujson.load(open(dbfile, "r"))
+db =  TinyDb(dbfile)
 
 handler = cbs.handler(config, db)
 
@@ -40,12 +41,15 @@ if __name__ == '__main__':
     dispatcher.add_handler(CommandHandler("sendto",     handler.sendto,         filters=admin_filter))
     dispatcher.add_handler(CommandHandler("spam",       handler.spam,           filters=admin_filter))
 
-    dispatcher.add_handler(MessageHandler(Filters.text  & ~Filters.command, handler.txtbon))
-    dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handler.imgbon))
+    dispatcher.add_handler(MessageHandler(Filters.text  & ~Filters.command, handler.message))
+    dispatcher.add_handler(MessageHandler(Filters.photo & ~Filters.command, handler.message))
 
     # scheduled tasks that run in UTC
-    #job = updater.job_queue
-    #job.run_daily(handler.russian, datetime.time(6, 30, 00, 000000),days=(0, 1, 2, 3, 4, 5, 6))
+    job = updater.job_queue
+    job.run_daily(handler.russian, datetime.time(8, 00, 00, 000000),days=(0, 1, 2, 3, 4, 5, 6))
+
+    # add exception handler
+    dispatcher.add_error_handler(handler.exception)
 
     # start_polling() is non-blocking and will stop the bot gracefully on SIGTERM
     updater.start_polling()
