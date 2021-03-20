@@ -123,7 +123,7 @@ class mhandler:
                 self.users.update(tdbop.set("characters", newvalue), Query().id == message.chat.id)
 
             if level < 2:  # don't print additional info for admins
-                text = f"Om {time} zei {message.chat.first_name}\n------------------------------------------\n{text}"
+                text = f"Om {time} zei {message.chat.first_name}\n{text}"
 
             self.printq.insert({"name": message.chat.first_name,
                                 "id": message.chat.id,

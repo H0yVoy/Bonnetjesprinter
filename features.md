@@ -11,3 +11,9 @@ Huidige todo lijst:
 - /anonymous for images
 - script that ups the contrast and prints research papers
 - python http met fancy webgui
+- reply with a gif of myself and the printer instead of brrrr
+- rate limiting lmao
+- maak printen een thread door iedere seconde de printque te checken zodat de bot kan reageren terwijl afbeeldingen worden geprint
+- maak /anonymous een per user toggle
+- schedule receipts
+- return message if queue is empty instead of nothing

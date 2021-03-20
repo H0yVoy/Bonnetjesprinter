@@ -3,7 +3,6 @@ from texts import start_text, welcome_text, help_text
 from tinydb import Query
 import tinydb.operations as tdbop
 
-
 class commandhandler:
     def __init__(self, level, handler):
         self.level = level

@@ -58,7 +58,7 @@ if __name__ == '__main__':
     job.run_daily(mhandler.wake, time(6, 30, 00, 000000),days=(0, 1, 2, 3, 4, 5, 6))
 
     # add exception handler
-    #dispatcher.add_error_handler(mhandler.exception)
+    dispatcher.add_error_handler(mhandler.exception)
 
     # start_polling() is non-blocking and will stop the bot gracefully on SIGTERM
     updater.start_polling()
