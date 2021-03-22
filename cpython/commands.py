@@ -1,7 +1,10 @@
 from sympy import preview  # latex compiling
-from texts import start_text, welcome_text, help_text
 from tinydb import Query
+from datetime import datetime
 import tinydb.operations as tdbop
+
+from texts import start_text, welcome_text, help_text, html_text
+
 
 class commandhandler:
     def __init__(self, level, handler):
@@ -26,10 +29,10 @@ class start(commandhandler):
             context.bot.send_message(chat_id=self.handler.cf['admin_id'], text=f"User id {message.chat.id} with name {user_name} has requested access to the bonnetjesprinter, moog det? Do a copy pasta")
             context.bot.send_message(chat_id=self.handler.cf['admin_id'], text=f"/grant {message.chat.id}")
             self.handler.users.insert({"name": message.chat.first_name + " " + message.chat.last_name,
-                                       "uname": "admin",
+                                       "uname": user_name,
                                        "id": message.chat.id,
                                        "added": str(datetime.now()),
-                                       "level": 2,
+                                       "level": 0,
                                        "messages": 0,
                                        "characters": 0,
                                        "images": 0})
@@ -37,6 +40,10 @@ class start(commandhandler):
 class help(commandhandler):
     def callback(self, update, context):
         update.message.reply_text(help_text)
+
+class html(commandhandler):
+    def callback(self, update, context):
+        update.message.reply_text(html_text)
 
 class info(commandhandler):
     def callback(self, update, context):
@@ -100,8 +107,8 @@ class grant(commandhandler):
         message = update.message
         user_id = int(message.text.split(" ")[1])
         user_name = '@' + message.chat.username if message.chat.username is not None else message.chat.first_name
-        if self.handler.get_level(user_id) != -1:
-            message.reply_text("The user you tried to approve is already in the database. Ignoring request")
+        if self.handler.get_level(user_id) > 0:
+            message.reply_text("The user you tried to grant access to already has access. Ignoring request")
         else:
             self.handler.users.update(tdbop.set("level", 1), Query().id == user_id)
             context.bot.send_message(chat_id=user_id, text=welcome_text)
@@ -146,6 +153,8 @@ class printq(commandhandler):
                 total = total + f"{item}\n"
         if total:
             update.message.reply_text(str(total))
+        else:
+            update.message.reply_text("Queue is empty")
 
 class purge(commandhandler):
     def callback(self, update, context):
@@ -163,3 +172,8 @@ class sleep(commandhandler):
         update.message.reply_text(f"sleep state was toggled. Sleep: {self.handler.sleep}")
         if not self.handler.sleep:
             self.handler.bprinter.brrr(context)
+
+class brrr(commandhandler):
+    def callback(self, update, context):
+        self.handler.bprinter.brrr(context)
+        update.message.reply_text(f"printing print queue")

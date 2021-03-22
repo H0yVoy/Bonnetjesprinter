@@ -1,11 +1,11 @@
 Huidige todo lijst:
+- support voor stickers (in progress)
 - auto in-line convert web links into qr codes
 - html-like syntax en interpreter voor printen
+- font support op een of andere manier beschikbaar maken in de bot
 - automatisch dagelijks bericht met iets Russisch
 - automatisch dagelijks bericht met weer/buienradar/idk
-- support voor stickers (in progress)
 - /motivation, /depression, /fortune etc.
-- font support op een of andere manier beschikbaar maken in de bot
 - als er een video inzit oid een error bericht terugsturen
 - only cut one after string of messages, also only print name once if so
 - /anonymous for images
@@ -16,4 +16,6 @@ Huidige todo lijst:
 - maak printen een thread door iedere seconde de printque te checken zodat de bot kan reageren terwijl afbeeldingen worden geprint
 - maak /anonymous een per user toggle
 - schedule receipts
+- format /html message more nicely
+
 - return message if queue is empty instead of nothing

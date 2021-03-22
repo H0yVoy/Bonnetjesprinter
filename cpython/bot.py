@@ -22,8 +22,9 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 logger = logging.getLogger(__name__)
 
 #           command,    function,       level
-commands = {"start":     (cmd.start,     0),
+commands = {"start":     (cmd.start,     -1),
             "help":      (cmd.help,      0),
+            "html":      (cmd.html,      0),
             "info":      (cmd.info,      0),
             "anonymous": (cmd.anon,      1),
             "latex":     (cmd.latex,     1),
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     job.run_daily(mhandler.wake, time(6, 30, 00, 000000),days=(0, 1, 2, 3, 4, 5, 6))
 
     # add exception handler
-    dispatcher.add_error_handler(mhandler.exception)
+    #dispatcher.add_error_handler(mhandler.exception)
 
     # start_polling() is non-blocking and will stop the bot gracefully on SIGTERM
     updater.start_polling()
